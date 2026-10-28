@@ -1,0 +1,149 @@
+.app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 3fr);
+}
+
+.search-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: #1f2937;
+  color: white;
+}
+
+.search-bar h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.search-row input {
+  flex: 1;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.search-row button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+.column {
+  padding: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.column+.column {
+  border-left: 1px solid #d1d5db;
+}
+
+.column h2 {
+  margin-top: 0;
+}
+
+.status {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+.results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* The card is just a positioned container now */
+.movie-card {
+  position: relative;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.movie-card:hover {
+  border-color: #9ca3af;
+}
+
+.movie-card.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* The real <button> that selects the card, styled to look like plain content */
+.card-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 88px 8px 8px;
+  /* extra right padding leaves room for Add */
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-select img,
+.no-poster {
+  width: 50px;
+  height: 75px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.no-poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+.movie-info strong {
+  display: block;
+}
+
+/* Upper right corner of the card */
+.add-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.add-btn:disabled {
+  cursor: not-allowed;
+}
+
+
+
+
+
+
+/*END*/
