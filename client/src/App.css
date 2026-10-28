@@ -70,7 +70,6 @@
   margin: 0;
 }
 
-/* The card is just a positioned container now */
 .movie-card {
   position: relative;
   margin-bottom: 8px;
@@ -89,14 +88,13 @@
   box-shadow: 0 0 0 2px #2563eb;
 }
 
-/* The real <button> that selects the card, styled to look like plain content */
+/* Search result: a real <button> that selects the card */
 .card-select {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 8px 88px 8px 8px;
-  /* extra right padding leaves room for Add */
+  padding: 8px 104px 8px 8px;
   background: none;
   border: none;
   border-radius: 6px;
@@ -106,7 +104,16 @@
   cursor: pointer;
 }
 
+/* Saved movie: plain content, not clickable */
+.card-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 104px 8px 8px;
+}
+
 .card-select img,
+.card-body img,
 .no-poster {
   width: 50px;
   height: 75px;
@@ -129,7 +136,8 @@
 }
 
 /* Upper right corner of the card */
-.add-btn {
+.add-btn,
+.remove-btn {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -137,12 +145,10 @@
   cursor: pointer;
 }
 
-.add-btn:disabled {
+.add-btn:disabled,
+.remove-btn:disabled {
   cursor: not-allowed;
 }
-
-
-
 
 
 

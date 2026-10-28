@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 const API = "http://localhost:5000/api";
@@ -20,13 +20,31 @@ function Poster({ src, title }) {
 }
 
 export default function App() {
+  // Search side
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState(null); // which card shows its Add button
+  const [selectedId, setSelectedId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [status, setStatus] = useState("");
+
+  // Saved movies side
+  const [movies, setMovies] = useState([]);
+  const [moviesLoaded, setMoviesLoaded] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
+
+  async function loadMovies() {
+    const res = await fetch(`${API}/movies`);
+    const data = await res.json();
+    setMovies(Array.isArray(data) ? data : []);
+    setMoviesLoaded(true);
+  }
+
+  // Runs once when the page first loads
+  useEffect(() => {
+    loadMovies();
+  }, []);
 
   async function handleSearch() {
     if (!query.trim()) return;
@@ -43,7 +61,6 @@ export default function App() {
   }
 
   function handleSelect(imdbID) {
-    // clicking the selected card again un-selects it
     setSelectedId(imdbID === selectedId ? null : imdbID);
     setStatus("");
   }
@@ -65,6 +82,7 @@ export default function App() {
       if (res.status === 201) {
         setStatus(`Added "${movie.Title}"`);
         setSelectedId(null);
+        await loadMovies(); // refresh the left column
       } else if (res.status === 409) {
         setStatus(`"${movie.Title}" is already in your list`);
       } else {
@@ -72,6 +90,16 @@ export default function App() {
       }
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function handleRemove(movie) {
+    setRemovingId(movie._id);
+    try {
+      await fetch(`${API}/movies/${movie._id}`, { method: "DELETE" });
+      await loadMovies(); // reload either way so the screen matches the database
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -96,7 +124,33 @@ export default function App() {
       <main className="columns">
         <section className="column">
           <h2>My Movies</h2>
-          <p>Your saved movies will appear here.</p>
+
+          {moviesLoaded && movies.length === 0 && (
+            <p>No movies yet. Search for one and add it!</p>
+          )}
+
+          <ul className="results">
+            {movies.map((movie) => (
+              <li key={movie._id} className="movie-card">
+                <div className="card-body">
+                  <Poster src={movie.poster} title={movie.title} />
+                  <div className="movie-info">
+                    <strong>{movie.title}</strong>
+                    <span>{movie.year}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="remove-btn"
+                  onClick={() => handleRemove(movie)}
+                  disabled={removingId === movie._id}
+                >
+                  {removingId === movie._id ? "Removing..." : "Remove"}
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="column">
