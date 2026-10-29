@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import "./App.css";
 
 const API = "http://localhost:5000/api";
+const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function Poster({ src, title }) {
   const [failed, setFailed] = useState(false);
@@ -34,6 +35,12 @@ export default function App() {
   const [moviesLoaded, setMoviesLoaded] = useState(false);
   const [removingId, setRemovingId] = useState(null);
 
+  // Editing: which saved movie is open, plus the draft values in the form
+  const [editingId, setEditingId] = useState(null);
+  const [editRating, setEditRating] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
   async function loadMovies() {
     const res = await fetch(`${API}/movies`);
     const data = await res.json();
@@ -41,7 +48,6 @@ export default function App() {
     setMoviesLoaded(true);
   }
 
-  // Runs once when the page first loads
   useEffect(() => {
     loadMovies();
   }, []);
@@ -82,7 +88,7 @@ export default function App() {
       if (res.status === 201) {
         setStatus(`Added "${movie.Title}"`);
         setSelectedId(null);
-        await loadMovies(); // refresh the left column
+        await loadMovies();
       } else if (res.status === 409) {
         setStatus(`"${movie.Title}" is already in your list`);
       } else {
@@ -97,9 +103,41 @@ export default function App() {
     setRemovingId(movie._id);
     try {
       await fetch(`${API}/movies/${movie._id}`, { method: "DELETE" });
-      await loadMovies(); // reload either way so the screen matches the database
+      await loadMovies();
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  function handleEditStart(movie) {
+    setEditingId(movie._id);
+    setEditRating(movie.rating == null ? "" : String(movie.rating));
+    setEditNote(movie.note || "");
+  }
+
+  function handleEditCancel() {
+    setEditingId(null);
+  }
+
+  async function handleEditSave(e) {
+    e.preventDefault(); // stop the browser from reloading the page
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/movies/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: editRating === "" ? null : Number(editRating),
+          note: editNote.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        setEditingId(null);
+        await loadMovies();
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -130,26 +168,107 @@ export default function App() {
           )}
 
           <ul className="results">
-            {movies.map((movie) => (
-              <li key={movie._id} className="movie-card">
-                <div className="card-body">
-                  <Poster src={movie.poster} title={movie.title} />
-                  <div className="movie-info">
-                    <strong>{movie.title}</strong>
-                    <span>{movie.year}</span>
-                  </div>
-                </div>
+            {movies.map((movie) => {
+              const isEditing = movie._id === editingId;
 
-                <button
-                  type="button"
-                  className="remove-btn"
-                  onClick={() => handleRemove(movie)}
-                  disabled={removingId === movie._id}
-                >
-                  {removingId === movie._id ? "Removing..." : "Remove"}
-                </button>
-              </li>
-            ))}
+              return (
+                <li key={movie._id} className="movie-card">
+                  {isEditing ? (
+                    <div className="card-body editing">
+                      <Poster src={movie.poster} title={movie.title} />
+                      <div className="movie-info">
+                        <strong>{movie.title}</strong>
+                        <span>{movie.year}</span>
+
+                        <form
+                          className="edit-form"
+                          onSubmit={handleEditSave}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") handleEditCancel();
+                          }}
+                        >
+                          <label>
+                            Your rating
+                            <select
+                              value={editRating}
+                              onChange={(e) => setEditRating(e.target.value)}
+                            >
+                              <option value="">Not rated</option>
+                              {RATINGS.map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label>
+                            Note
+                            <input
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                              maxLength={100}
+                              placeholder="What did you think?"
+                              autoFocus
+                            />
+                          </label>
+                          <span className="char-count">
+                            {editNote.length}/100
+                          </span>
+
+                          <div className="edit-buttons">
+                            <button type="submit" disabled={saving}>
+                              {saving ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleEditCancel}
+                              disabled={saving}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="card-body">
+                        <Poster src={movie.poster} title={movie.title} />
+                        <div className="movie-info">
+                          <strong>{movie.title}</strong>
+                          <span>{movie.year}</span>
+                          <span className="rating">
+                            {movie.rating != null
+                              ? `Your rating: ${movie.rating}/10`
+                              : "Not rated"}
+                          </span>
+                          {movie.note && (
+                            <span className="note">{movie.note}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="card-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleEditStart(movie)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(movie)}
+                          disabled={removingId === movie._id}
+                        >
+                          {removingId === movie._id ? "Removing..." : "Remove"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
 

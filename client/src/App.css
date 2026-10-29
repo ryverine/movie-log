@@ -70,6 +70,14 @@
   margin: 0;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 .movie-card {
   position: relative;
   margin-bottom: 8px;
@@ -101,15 +109,19 @@
   font: inherit;
   color: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
-/* Saved movie: plain content, not clickable */
+/* Saved movie: plain content. Right padding leaves room for Edit + Remove */
 .card-body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 104px 8px 8px;
+  padding: 8px 160px 8px 8px;
+}
+
+.card-body.editing {
+  align-items: flex-start;
+  padding: 8px;
 }
 
 .card-select img,
@@ -131,25 +143,88 @@
   color: #6b7280;
 }
 
+.movie-info {
+  min-width: 0;
+}
+
+.card-body.editing .movie-info {
+  flex: 1;
+}
+
 .movie-info strong {
   display: block;
 }
 
+.movie-info span {
+  display: block;
+}
+
+.rating {
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.note {
+  margin-top: 2px;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: #4b5563;
+  overflow-wrap: anywhere;
+}
+
 /* Upper right corner of the card */
-.add-btn,
-.remove-btn {
+.add-btn {
   position: absolute;
   top: 8px;
   right: 8px;
   padding: 6px 14px;
-  cursor: pointer;
 }
 
-.add-btn:disabled,
-.remove-btn:disabled {
-  cursor: not-allowed;
+.card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
 }
 
+.card-actions button {
+  padding: 6px 14px;
+}
 
+/* The edit form */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.edit-form input,
+.edit-form select {
+  padding: 6px;
+  font: inherit;
+}
+
+.char-count {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-buttons button {
+  padding: 6px 14px;
+}
 
 /*END*/
