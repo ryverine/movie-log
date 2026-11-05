@@ -141,6 +141,9 @@ export default function App() {
     }
   }
 
+  // Derived state: the imdbID of every movie already saved
+  const savedIds = new Set(movies.map((m) => m.imdbID));
+
   return (
     <div className="app">
       <header className="search-bar">
@@ -285,16 +288,19 @@ export default function App() {
 
           <ul className="results">
             {results.map((movie) => {
-              const isSelected = movie.imdbID === selectedId;
+              const isSaved = savedIds.has(movie.imdbID);
+              const isSelected = !isSaved && movie.imdbID === selectedId;
+              const cardClass = ["movie-card", isSelected ? "selected" : "", isSaved ? "saved" : ""]
+                .join(" ")
+                .trim();
+
               return (
-                <li
-                  key={movie.imdbID}
-                  className={isSelected ? "movie-card selected" : "movie-card"}
-                >
+                <li key={movie.imdbID} className={cardClass}>
                   <button
                     type="button"
                     className="card-select"
                     aria-pressed={isSelected}
+                    disabled={isSaved}
                     onClick={() => handleSelect(movie.imdbID)}
                   >
                     <Poster src={movie.Poster} title={movie.Title} />
@@ -303,6 +309,8 @@ export default function App() {
                       <span>{movie.Year}</span>
                     </div>
                   </button>
+
+                  {isSaved && <span className="saved-badge">✓ Saved</span>}
 
                   {isSelected && (
                     <button
