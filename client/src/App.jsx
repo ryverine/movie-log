@@ -34,6 +34,7 @@ export default function App() {
   const [movies, setMovies] = useState([]);
   const [moviesLoaded, setMoviesLoaded] = useState(false);
   const [removingId, setRemovingId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null); // which card is asking "Remove?"
 
   // Editing: which saved movie is open, plus the draft values in the form
   const [editingId, setEditingId] = useState(null);
@@ -106,6 +107,7 @@ export default function App() {
       await loadMovies();
     } finally {
       setRemovingId(null);
+      setConfirmingId(null);
     }
   }
 
@@ -252,21 +254,46 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="card-actions">
-                        <button
-                          type="button"
-                          onClick={() => handleEditStart(movie)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(movie)}
-                          disabled={removingId === movie._id}
-                        >
-                          {removingId === movie._id ? "Removing..." : "Remove"}
-                        </button>
+                      <div
+                        className="card-actions"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setConfirmingId(null);
+                        }}
+                      >
+                        {confirmingId === movie._id ? (
+                          <>
+                            <span className="confirm-text">Remove?</span>
+                            <button
+                              type="button"
+                              aria-label={`Yes, remove ${movie.title}`}
+                              onClick={() => handleRemove(movie)}
+                              disabled={removingId === movie._id}
+                            >
+                              {removingId === movie._id ? "Removing..." : "Yes"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingId(null)}
+                              disabled={removingId === movie._id}
+                              autoFocus
+                            >
+                              No
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => handleEditStart(movie)}>
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => setConfirmingId(movie._id)}>
+                              Remove
+                            </button>
+                          </>
+                        )}
                       </div>
+
+
+
                     </>
                   )}
                 </li>
