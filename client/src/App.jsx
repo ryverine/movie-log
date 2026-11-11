@@ -23,6 +23,7 @@ function Poster({ src, title }) {
 export default function App() {
   // Search side
   const [query, setQuery] = useState("");
+  const [year, setYear] = useState("");
   const [results, setResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,9 +59,14 @@ export default function App() {
     setLoading(true);
     setSelectedId(null);
     setStatus("");
-    const res = await fetch(
+    /*const res = await fetch(
       `${API}/search?title=${encodeURIComponent(query.trim())}`
-    );
+    );*/
+
+    const params = new URLSearchParams({ title: query.trim() });
+    if (year) params.set("year", year);
+    const res = await fetch(`${API}/search?${params}`);
+
     const data = await res.json();
     setResults(Array.isArray(data) ? data : []);
     setHasSearched(true);
@@ -159,7 +165,22 @@ export default function App() {
             }}
             maxLength={100}
             placeholder="Search for a movie title..."
+            aria-label="Movie title"
           />
+
+          <input
+            className="year-input"
+            value={year}
+            onChange={(e) => setYear(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
+            }}
+            maxLength={4}
+            inputMode="numeric"
+            placeholder="Year"
+            aria-label="Release year (optional)"
+          />
+
           <button onClick={handleSearch}>Search</button>
         </div>
       </header>

@@ -30,17 +30,27 @@ const Entry = mongoose.model(
     )
 );
 
-// GET: search OMDb for movies by title
+// GET: search OMDb for movies by title and year
 app.get("/api/search", async (req, res) => {
     const title = (req.query.title || "").trim();
+    const year = (req.query.year || "").trim();
     if (!title) {
         return res.status(400).json({ error: "Title is required" });
     }
 
+    if (year && !/^\d{4}$/.test(year)) {
+        return res.status(400).json({ error: "Year must be 4 digits" });
+    }
+
     try {
+        /*const url =
+            `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
+            `&type=movie&s=${encodeURIComponent(title)}`;*/
+
         const url =
             `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
-            `&type=movie&s=${encodeURIComponent(title)}`;
+            `&type=movie&s=${encodeURIComponent(title)}` +
+            (year ? `&y=${year}` : "");
 
         const response = await fetch(url);
         const data = await response.json();
