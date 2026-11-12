@@ -1,5 +1,6 @@
 require("dotenv").config();// npm install dotenv
 //console.log("OMDb key loaded:", Boolean(process.env.OMDB_API_KEY));// prints true if there is an omdb api key
+const { fetchMovieDetails } = require("./omdb");
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -10,6 +11,7 @@ const Movie = require("./models/Movie");
 const app = express();
 app.use(cors());          // lets React talk to this server
 app.use(express.json());  // lets the server read JSON
+
 
 // Connect to MongoDB
 mongoose
@@ -30,17 +32,27 @@ const Entry = mongoose.model(
     )
 );
 
-// GET: search OMDb for movies by title
+// GET: search OMDb for movies by title and year
 app.get("/api/search", async (req, res) => {
     const title = (req.query.title || "").trim();
+    const year = (req.query.year || "").trim();
     if (!title) {
         return res.status(400).json({ error: "Title is required" });
     }
 
+    if (year && !/^\d{4}$/.test(year)) {
+        return res.status(400).json({ error: "Year must be 4 digits" });
+    }
+
     try {
+        /*const url =
+            `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
+            `&type=movie&s=${encodeURIComponent(title)}`;*/
+
         const url =
             `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
-            `&type=movie&s=${encodeURIComponent(title)}`;
+            `&type=movie&s=${encodeURIComponent(title)}` +
+            (year ? `&y=${year}` : "");
 
         const response = await fetch(url);
         const data = await response.json();
@@ -71,7 +83,7 @@ app.get("/api/movies", async (req, res) => {
 });
 
 // POST: save a movie
-app.post("/api/movies", async (req, res) => {
+/*app.post("/api/movies", async (req, res) => {
     try {
         const { imdbID, title, year, poster } = req.body;
         const movie = await Movie.create({ imdbID, title, year, poster });
@@ -82,7 +94,42 @@ app.post("/api/movies", async (req, res) => {
         }
         res.status(400).json({ error: err.message });
     }
+});*/
+
+// POST: save a movie. The client sends only the imdbID; the server looks up the rest.
+app.post("/api/movies", async (req, res) => {
+    const imdbID = String(req.body?.imdbID || "").trim();
+
+    if (!/^tt\d{7,8}$/.test(imdbID)) {
+        return res.status(400).json({ error: "A valid imdbID is required" });
+    }
+
+    try {
+        // Skip the OMDb call entirely if we already have this movie
+        if (await Movie.exists({ imdbID })) {
+            return res.status(409).json({ error: "Movie already saved" });
+        }
+
+        const details = await fetchMovieDetails(imdbID);
+        const movie = await Movie.create(details);
+        res.status(201).json(movie);
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(409).json({ error: "Movie already saved" });
+        }
+        if (err.notFound) {
+            return res.status(404).json({ error: "Movie not found on OMDb" });
+        }
+        if (err.upstream) {
+            return res.status(502).json({ error: "Could not get movie details from OMDb" });
+        }
+        if (err.name === "ValidationError") {
+            return res.status(400).json({ error: err.message });
+        }
+        res.status(500).json({ error: "Could not save movie" });
+    }
 });
+
 
 // PUT: update your rating and note
 app.put("/api/movies/:id", async (req, res) => {
