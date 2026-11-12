@@ -128,7 +128,7 @@ export default function App() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rating: Number(editRating),
+          rating: editRating === "" ? null : Number(editRating),
           note: editNote.trim(),
         }),
       });
