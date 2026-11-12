@@ -302,4 +302,16 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 14px;
+}
+
+.card-body.editing {
+  padding-right: 90px;
+  /* leave room for the Close button */
+}
+
 /*END*/

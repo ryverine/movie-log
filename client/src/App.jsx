@@ -133,13 +133,14 @@ export default function App() {
 
   async function handleEditSave(e) {
     e.preventDefault(); // stop the browser from reloading the page
+    if (saving) return; // ignore a second submit while one is in flight
     setSaving(true);
     try {
       const res = await fetch(`${API}/movies/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rating: editRating === "" ? null : Number(editRating),
+          rating: Number(editRating),
           note: editNote.trim(),
         }),
       });
@@ -208,53 +209,64 @@ export default function App() {
               return (
                 <li key={movie._id} className="movie-card">
                   {isEditing ? (
-                    <div className="card-body editing">
-                      <Poster src={movie.poster} title={movie.title} />
+                    <>
+                      <div className="card-body editing">
+                        <Poster src={movie.poster} title={movie.title} />
 
-                      <div className="movie-info">
-                        <strong>{movie.title}</strong>
-                        <span>{movie.year}</span>
-                        {facts && <span className="facts">{facts}</span>}
+                        <div className="movie-info">
+                          <strong>{movie.title}</strong>
+                          <span>{movie.year}</span>
+                          {facts && <span className="facts">{facts}</span>}
 
-                        {(movie.imdbRating || movie.rottenTomatoes || movie.metascore) && (
-                          <div className="scores">
-                            {movie.imdbRating && (
-                              <span className="score">IMDb {movie.imdbRating}/10</span>
-                            )}
-                            {movie.rottenTomatoes && (
-                              <span className="score">Rotten Tomatoes {movie.rottenTomatoes}</span>
-                            )}
-                            {movie.metascore && (
-                              <span className="score">Metacritic {movie.metascore}/100</span>
-                            )}
-                          </div>
-                        )}
+                          {(movie.imdbRating || movie.rottenTomatoes || movie.metascore) && (
+                            <div className="scores">
+                              {movie.imdbRating && (
+                                <span className="score">IMDb {movie.imdbRating}/10</span>
+                              )}
+                              {movie.rottenTomatoes && (
+                                <span className="score">Rotten Tomatoes {movie.rottenTomatoes}</span>
+                              )}
+                              {movie.metascore && (
+                                <span className="score">Metacritic {movie.metascore}/100</span>
+                              )}
+                            </div>
+                          )}
 
-                        <span className="rating">
-                          {movie.rating != null ? `Your rating: ${movie.rating}/10` : "Not rated"}
-                        </span>
-                        {movie.note && <span className="note">{movie.note}</span>}
+                          <span className="rating">
+                            {movie.rating != null ? `Your rating: ${movie.rating}/10` : "Not rated"}
+                          </span>
+                          {movie.note && <span className="note">{movie.note}</span>}
 
-                        {hasDetails && (
-                          <details className="more-info">
-                            <summary>More info</summary>
-                            {movie.director && <p><strong>Director:</strong> {movie.director}</p>}
-                            {movie.actors && <p><strong>Starring:</strong> {movie.actors}</p>}
-                            {movie.plot && <p>{movie.plot}</p>}
-                          </details>
-                        )}
+                          {hasDetails && (
+                            <details className="more-info">
+                              <summary>More info</summary>
+                              {movie.director && <p><strong>Director:</strong> {movie.director}</p>}
+                              {movie.actors && <p><strong>Starring:</strong> {movie.actors}</p>}
+                              {movie.plot && <p>{movie.plot}</p>}
+                            </details>
+                          )}
 
-                        <a
-                          className="imdb-link"
-                          href={`https://www.imdb.com/title/${movie.imdbID}/`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          View on IMDb
-                        </a>
+                          <a
+                            className="imdb-link"
+                            href={`https://www.imdb.com/title/${movie.imdbID}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View on IMDb
+                          </a>
+                        </div>
+
                       </div>
 
-                    </div>
+                      <button
+                        type="button"
+                        className="close-btn"
+                        onClick={handleEditCancel}
+                        disabled={saving}
+                      >
+                        Close
+                      </button>
+                    </>
                   ) : (
                     <>
                       <div className="card-body">
