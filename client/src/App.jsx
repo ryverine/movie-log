@@ -59,14 +59,9 @@ export default function App() {
     setLoading(true);
     setSelectedId(null);
     setStatus("");
-    /*const res = await fetch(
-      `${API}/search?title=${encodeURIComponent(query.trim())}`
-    );*/
-
     const params = new URLSearchParams({ title: query.trim() });
     if (year) params.set("year", year);
     const res = await fetch(`${API}/search?${params}`);
-
     const data = await res.json();
     setResults(Array.isArray(data) ? data : []);
     setHasSearched(true);
@@ -84,14 +79,7 @@ export default function App() {
       const res = await fetch(`${API}/movies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        /*body: JSON.stringify({
-          imdbID: movie.imdbID,
-          title: movie.Title,
-          year: movie.Year,
-          poster: movie.Poster === "N/A" ? "" : movie.Poster,
-        }),*/
         body: JSON.stringify({ imdbID: movie.imdbID }),
-
       });
 
       if (res.status === 201) {
@@ -172,7 +160,6 @@ export default function App() {
             placeholder="Search for a movie title..."
             aria-label="Movie title"
           />
-
           <input
             className="year-input"
             value={year}
@@ -185,7 +172,6 @@ export default function App() {
             placeholder="Year"
             aria-label="Release year (optional)"
           />
-
           <button onClick={handleSearch}>Search</button>
         </div>
       </header>
@@ -201,9 +187,9 @@ export default function App() {
           <ul className="results">
             {movies.map((movie) => {
               const isEditing = movie._id === editingId;
-
-              const facts = [movie.rated, movie.runtime, movie.genre].filter(Boolean).join(" · ");
-
+              const facts = [movie.rated, movie.runtime, movie.genre]
+                .filter(Boolean)
+                .join(" · ");
               const hasDetails = movie.director || movie.actors || movie.plot;
 
               return (
@@ -212,50 +198,60 @@ export default function App() {
                     <>
                       <div className="card-body editing">
                         <Poster src={movie.poster} title={movie.title} />
-
                         <div className="movie-info">
                           <strong>{movie.title}</strong>
                           <span>{movie.year}</span>
-                          {facts && <span className="facts">{facts}</span>}
 
-                          {(movie.imdbRating || movie.rottenTomatoes || movie.metascore) && (
-                            <div className="scores">
-                              {movie.imdbRating && (
-                                <span className="score">IMDb {movie.imdbRating}/10</span>
-                              )}
-                              {movie.rottenTomatoes && (
-                                <span className="score">Rotten Tomatoes {movie.rottenTomatoes}</span>
-                              )}
-                              {movie.metascore && (
-                                <span className="score">Metacritic {movie.metascore}/100</span>
-                              )}
-                            </div>
-                          )}
-
-                          <span className="rating">
-                            {movie.rating != null ? `Your rating: ${movie.rating}/10` : "Not rated"}
-                          </span>
-                          {movie.note && <span className="note">{movie.note}</span>}
-
-                          {hasDetails && (
-                            <details className="more-info">
-                              <summary>More info</summary>
-                              {movie.director && <p><strong>Director:</strong> {movie.director}</p>}
-                              {movie.actors && <p><strong>Starring:</strong> {movie.actors}</p>}
-                              {movie.plot && <p>{movie.plot}</p>}
-                            </details>
-                          )}
-
-                          <a
-                            className="imdb-link"
-                            href={`https://www.imdb.com/title/${movie.imdbID}/`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <form
+                            className="edit-form"
+                            onSubmit={handleEditSave}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") handleEditCancel();
+                            }}
                           >
-                            View on IMDb
-                          </a>
-                        </div>
+                            <label>
+                              Your rating
+                              <select
+                                value={editRating}
+                                onChange={(e) => setEditRating(e.target.value)}
+                              >
+                                <option value="">Not rated</option>
+                                {RATINGS.map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
 
+                            <label>
+                              Note
+                              <input
+                                value={editNote}
+                                onChange={(e) => setEditNote(e.target.value)}
+                                maxLength={100}
+                                placeholder="What did you think?"
+                                autoFocus
+                              />
+                            </label>
+                            <span className="char-count">
+                              {editNote.length}/100
+                            </span>
+
+                            <div className="edit-buttons">
+                              <button type="submit" disabled={saving}>
+                                {saving ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleEditCancel}
+                                disabled={saving}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        </div>
                       </div>
 
                       <button
@@ -274,6 +270,30 @@ export default function App() {
                         <div className="movie-info">
                           <strong>{movie.title}</strong>
                           <span>{movie.year}</span>
+                          {facts && <span className="facts">{facts}</span>}
+
+                          {(movie.imdbRating ||
+                            movie.rottenTomatoes ||
+                            movie.metascore) && (
+                              <div className="scores">
+                                {movie.imdbRating && (
+                                  <span className="score">
+                                    IMDb {movie.imdbRating}/10
+                                  </span>
+                                )}
+                                {movie.rottenTomatoes && (
+                                  <span className="score">
+                                    Rotten Tomatoes {movie.rottenTomatoes}
+                                  </span>
+                                )}
+                                {movie.metascore && (
+                                  <span className="score">
+                                    Metacritic {movie.metascore}/100
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
                           <span className="rating">
                             {movie.rating != null
                               ? `Your rating: ${movie.rating}/10`
@@ -282,6 +302,32 @@ export default function App() {
                           {movie.note && (
                             <span className="note">{movie.note}</span>
                           )}
+
+                          {hasDetails && (
+                            <details className="more-info">
+                              <summary>More info</summary>
+                              {movie.director && (
+                                <p>
+                                  <strong>Director:</strong> {movie.director}
+                                </p>
+                              )}
+                              {movie.actors && (
+                                <p>
+                                  <strong>Starring:</strong> {movie.actors}
+                                </p>
+                              )}
+                              {movie.plot && <p>{movie.plot}</p>}
+                            </details>
+                          )}
+
+                          <a
+                            className="imdb-link"
+                            href={`https://www.imdb.com/title/${movie.imdbID}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View on IMDb
+                          </a>
                         </div>
                       </div>
 
@@ -313,18 +359,21 @@ export default function App() {
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => handleEditStart(movie)}>
+                            <button
+                              type="button"
+                              onClick={() => handleEditStart(movie)}
+                            >
                               Edit
                             </button>
-                            <button type="button" onClick={() => setConfirmingId(movie._id)}>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmingId(movie._id)}
+                            >
                               Remove
                             </button>
                           </>
                         )}
                       </div>
-
-
-
                     </>
                   )}
                 </li>
@@ -348,7 +397,11 @@ export default function App() {
             {results.map((movie) => {
               const isSaved = savedIds.has(movie.imdbID);
               const isSelected = !isSaved && movie.imdbID === selectedId;
-              const cardClass = ["movie-card", isSelected ? "selected" : "", isSaved ? "saved" : ""]
+              const cardClass = [
+                "movie-card",
+                isSelected ? "selected" : "",
+                isSaved ? "saved" : "",
+              ]
                 .join(" ")
                 .trim();
 
