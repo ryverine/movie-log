@@ -201,65 +201,59 @@ export default function App() {
             {movies.map((movie) => {
               const isEditing = movie._id === editingId;
 
+              const facts = [movie.rated, movie.runtime, movie.genre].filter(Boolean).join(" · ");
+
+              const hasDetails = movie.director || movie.actors || movie.plot;
+
               return (
                 <li key={movie._id} className="movie-card">
                   {isEditing ? (
                     <div className="card-body editing">
                       <Poster src={movie.poster} title={movie.title} />
+
                       <div className="movie-info">
                         <strong>{movie.title}</strong>
                         <span>{movie.year}</span>
+                        {facts && <span className="facts">{facts}</span>}
 
-                        <form
-                          className="edit-form"
-                          onSubmit={handleEditSave}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") handleEditCancel();
-                          }}
-                        >
-                          <label>
-                            Your rating
-                            <select
-                              value={editRating}
-                              onChange={(e) => setEditRating(e.target.value)}
-                            >
-                              <option value="">Not rated</option>
-                              {RATINGS.map((n) => (
-                                <option key={n} value={n}>
-                                  {n}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label>
-                            Note
-                            <input
-                              value={editNote}
-                              onChange={(e) => setEditNote(e.target.value)}
-                              maxLength={100}
-                              placeholder="What did you think?"
-                              autoFocus
-                            />
-                          </label>
-                          <span className="char-count">
-                            {editNote.length}/100
-                          </span>
-
-                          <div className="edit-buttons">
-                            <button type="submit" disabled={saving}>
-                              {saving ? "Saving..." : "Save"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleEditCancel}
-                              disabled={saving}
-                            >
-                              Cancel
-                            </button>
+                        {(movie.imdbRating || movie.rottenTomatoes || movie.metascore) && (
+                          <div className="scores">
+                            {movie.imdbRating && (
+                              <span className="score">IMDb {movie.imdbRating}/10</span>
+                            )}
+                            {movie.rottenTomatoes && (
+                              <span className="score">Rotten Tomatoes {movie.rottenTomatoes}</span>
+                            )}
+                            {movie.metascore && (
+                              <span className="score">Metacritic {movie.metascore}/100</span>
+                            )}
                           </div>
-                        </form>
+                        )}
+
+                        <span className="rating">
+                          {movie.rating != null ? `Your rating: ${movie.rating}/10` : "Not rated"}
+                        </span>
+                        {movie.note && <span className="note">{movie.note}</span>}
+
+                        {hasDetails && (
+                          <details className="more-info">
+                            <summary>More info</summary>
+                            {movie.director && <p><strong>Director:</strong> {movie.director}</p>}
+                            {movie.actors && <p><strong>Starring:</strong> {movie.actors}</p>}
+                            {movie.plot && <p>{movie.plot}</p>}
+                          </details>
+                        )}
+
+                        <a
+                          className="imdb-link"
+                          href={`https://www.imdb.com/title/${movie.imdbID}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          View on IMDb
+                        </a>
                       </div>
+
                     </div>
                   ) : (
                     <>

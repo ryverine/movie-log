@@ -257,4 +257,49 @@ button:disabled {
 }
 
 
+.card-body {
+  align-items: flex-start;
+}
+
+.facts {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.movie-info .score {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+}
+
+.more-info {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.more-info summary {
+  cursor: pointer;
+  color: #2563eb;
+}
+
+.more-info p {
+  margin: 6px 0 0;
+}
+
+.imdb-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
 /*END*/
