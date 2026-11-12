@@ -84,12 +84,14 @@ export default function App() {
       const res = await fetch(`${API}/movies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        /*body: JSON.stringify({
           imdbID: movie.imdbID,
           title: movie.Title,
           year: movie.Year,
           poster: movie.Poster === "N/A" ? "" : movie.Poster,
-        }),
+        }),*/
+        body: JSON.stringify({ imdbID: movie.imdbID }),
+
       });
 
       if (res.status === 201) {
@@ -98,6 +100,8 @@ export default function App() {
         await loadMovies();
       } else if (res.status === 409) {
         setStatus(`"${movie.Title}" is already in your list`);
+      } else if (res.status === 502) {
+        setStatus("Could not get movie details. Please try again.");
       } else {
         setStatus("Something went wrong");
       }

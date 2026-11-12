@@ -11,6 +11,61 @@ const app = express();
 app.use(cors());          // lets React talk to this server
 app.use(express.json());  // lets the server read JSON
 
+// Convert OMDb's "N/A" placeholder into an empty string
+const clean = (value) => (value && value !== "N/A" ? value : "");
+
+
+// OMDb's messages for an ID that doesn't match a movie. Anything not listed here
+// (bad API key, daily limit reached, ...) stays a 502.
+const NOT_FOUND_MESSAGES = new Set([
+    "Error getting data.",
+    "Incorrect IMDb ID.",
+    "Movie not found!",
+]);
+
+// Look up one movie on OMDb and return it in the shape our database uses
+async function fetchMovieDetails(imdbID) {
+    const url =
+        `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
+        `&i=${encodeURIComponent(imdbID)}&plot=short`;
+
+    let data;
+    try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        data = await response.json();
+    } catch {
+        const err = new Error("Could not reach OMDb");
+        err.upstream = true;
+        throw err;
+    }
+
+    if (data.Response === "False") {
+        const err = new Error(data.Error);
+        err.upstream = true;
+        //err.notFound = data.Error === "Incorrect IMDb ID.";
+        err.notFound = NOT_FOUND_MESSAGES.has(data.Error);
+        throw err;
+    }
+
+    return {
+        imdbID: data.imdbID,
+        title: data.Title,
+        year: data.Year,
+        poster: clean(data.Poster),
+        rated: clean(data.Rated),
+        runtime: clean(data.Runtime),
+        genre: clean(data.Genre),
+        director: clean(data.Director),
+        actors: clean(data.Actors),
+        plot: clean(data.Plot),
+        imdbRating: clean(data.imdbRating),
+        rottenTomatoes: clean(
+            data.Ratings?.find((r) => r.Source === "Rotten Tomatoes")?.Value
+        ),
+        metascore: clean(data.Metascore),
+    };
+}
+
 // Connect to MongoDB
 mongoose
     .connect("mongodb://127.0.0.1:27017/simpleapp")
@@ -81,7 +136,7 @@ app.get("/api/movies", async (req, res) => {
 });
 
 // POST: save a movie
-app.post("/api/movies", async (req, res) => {
+/*app.post("/api/movies", async (req, res) => {
     try {
         const { imdbID, title, year, poster } = req.body;
         const movie = await Movie.create({ imdbID, title, year, poster });
@@ -92,7 +147,42 @@ app.post("/api/movies", async (req, res) => {
         }
         res.status(400).json({ error: err.message });
     }
+});*/
+
+// POST: save a movie. The client sends only the imdbID; the server looks up the rest.
+app.post("/api/movies", async (req, res) => {
+    const imdbID = String(req.body?.imdbID || "").trim();
+
+    if (!/^tt\d{7,8}$/.test(imdbID)) {
+        return res.status(400).json({ error: "A valid imdbID is required" });
+    }
+
+    try {
+        // Skip the OMDb call entirely if we already have this movie
+        if (await Movie.exists({ imdbID })) {
+            return res.status(409).json({ error: "Movie already saved" });
+        }
+
+        const details = await fetchMovieDetails(imdbID);
+        const movie = await Movie.create(details);
+        res.status(201).json(movie);
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(409).json({ error: "Movie already saved" });
+        }
+        if (err.notFound) {
+            return res.status(404).json({ error: "Movie not found on OMDb" });
+        }
+        if (err.upstream) {
+            return res.status(502).json({ error: "Could not get movie details from OMDb" });
+        }
+        if (err.name === "ValidationError") {
+            return res.status(400).json({ error: err.message });
+        }
+        res.status(500).json({ error: "Could not save movie" });
+    }
 });
+
 
 // PUT: update your rating and note
 app.put("/api/movies/:id", async (req, res) => {
