@@ -162,4 +162,25 @@ app.delete("/api/movies/:id", async (req, res) => {
     }
 });
 
+
+
+// Any unmatched /api route answers with JSON, not an Express HTML error page
+app.use("/api", (req, res) => {
+    res.status(404).json({ error: `No route for ${req.method} ${req.originalUrl}` });
+});
+
+// Last resort: catch anything a route throws instead of crashing the server
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).json({ error: "Unexpected server error" });
+});
+
+
+
+
+
+
+
+
+
 app.listen(5000, () => console.log("Server running on port 5000"));
