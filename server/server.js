@@ -17,14 +17,34 @@ app.use(express.json());  // lets the server read JSON
 
 
 // Connect to MongoDB
-mongoose
-    .connect(config.mongoUri)
-    .then(() => console.log("MongoDB connected"))
-    .catch((err) => console.error(err));
+
 /*mongoose
     .connect("mongodb://127.0.0.1:27017/simpleapp")
     .then(() => console.log("MongoDB connected"))
     .catch((err) => console.error(err));*/
+
+/*mongoose
+    .connect(config.mongoUri)
+    .then(() => console.log("MongoDB connected"))
+    .catch((err) => console.error(err));*/
+
+
+// Connect to MongoDB first then listen
+
+mongoose
+    .connect(config.mongoUri)
+    .then(() => {
+        console.log("MongoDB connected");
+        app.listen(config.port, () =>
+            console.log(`Server running on port ${config.port}`)
+        );
+    })
+    .catch((err) => {
+        console.error("Could not connect to MongoDB:", err.message);
+        process.exit(1);
+    });
+
+
 
 //Movie.init().then(() => console.log("Movie model ready"));
 //imdbID is unique: true. Every movie has a unique IMDb ID, so this tells MongoDB to refuse a second copy of the same movie. This is enforced by the database itself, which is stronger than checking in your code. Two requests arriving at the same instant can both pass a code check, but they can’t both pass a unique index. (Mongoose builds this index in the background, which is what Movie.init() waits for.)
@@ -192,4 +212,4 @@ app.use((err, req, res, next) => {
 
 //app.listen(5000, () => console.log("Server running on port 5000"));
 
-app.listen(config.port, () => console.log(`Server running on port ${config.port}`));
+//app.listen(config.port, () => console.log(`Server running on port ${config.port}`));
