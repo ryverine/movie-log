@@ -4,6 +4,48 @@ import "./App.css";
 const API = "http://localhost:5000/api";
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
+// An error that carries the HTTP status, so callers can react to specific cases
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+// Every request to our API goes through here, so error handling lives in one place
+async function request(path, options) {
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, options);
+  } catch {
+    // fetch only rejects when the request never got an answer
+    throw new ApiError("Can't reach the server. Is it running?", 0);
+  }
+
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null; // not JSON, so fall back to a status-based message below
+    }
+  }
+
+  if (!res.ok) {
+    const fallback =
+      res.status === 502
+        ? "Movie service is unavailable. Please try again."
+        : res.status >= 500
+          ? "Something went wrong on the server."
+          : `Request failed (${res.status})`;
+    throw new ApiError(data?.error || fallback, res.status);
+  }
+
+  return data;
+}
+
 function Poster({ src, title }) {
   const [failed, setFailed] = useState(false);
 
@@ -12,11 +54,7 @@ function Poster({ src, title }) {
   }
 
   return (
-    <img
-      src={src}
-      alt={`${title} poster`}
-      onError={() => setFailed(true)}
-    />
+    <img src={src} alt={`${title} poster`} onError={() => setFailed(true)} />
   );
 }
 
@@ -30,24 +68,37 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [status, setStatus] = useState("");
+  const [statusIsError, setStatusIsError] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [searchErrorKind, setSearchErrorKind] = useState("error"); // "error" or "warning"
+
+
 
   // Saved movies side
   const [movies, setMovies] = useState([]);
   const [moviesLoaded, setMoviesLoaded] = useState(false);
+  const [moviesError, setMoviesError] = useState("");
   const [removingId, setRemovingId] = useState(null);
-  const [confirmingId, setConfirmingId] = useState(null); // which card is asking "Remove?"
+  const [confirmingId, setConfirmingId] = useState(null);
+  const [cardError, setCardError] = useState(null); // { id, message }
 
-  // Editing: which saved movie is open, plus the draft values in the form
+  // Editing
   const [editingId, setEditingId] = useState(null);
   const [editRating, setEditRating] = useState("");
   const [editNote, setEditNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
   async function loadMovies() {
-    const res = await fetch(`${API}/movies`);
-    const data = await res.json();
-    setMovies(Array.isArray(data) ? data : []);
-    setMoviesLoaded(true);
+    setMoviesError("");
+    try {
+      const data = await request("/movies");
+      setMovies(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setMoviesError(err.message);
+    } finally {
+      setMoviesLoaded(true);
+    }
   }
 
   useEffect(() => {
@@ -55,17 +106,34 @@ export default function App() {
   }, []);
 
   async function handleSearch() {
-    if (!query.trim()) return;
+
+    // Catch if search box is blank
+    if (!query.trim()) {
+      setSearchError("Enter a movie title to search.");
+      setSearchErrorKind("warning");
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+
     setLoading(true);
     setSelectedId(null);
     setStatus("");
-    const params = new URLSearchParams({ title: query.trim() });
-    if (year) params.set("year", year);
-    const res = await fetch(`${API}/search?${params}`);
-    const data = await res.json();
-    setResults(Array.isArray(data) ? data : []);
-    setHasSearched(true);
-    setLoading(false);
+    setSearchError("");
+    try {
+      const params = new URLSearchParams({ title: query.trim() });
+      if (year) params.set("year", year);
+      const data = await request(`/search?${params}`);
+      setResults(Array.isArray(data) ? data : []);
+      setHasSearched(true);
+    } catch (err) {
+      setSearchError(err.message);
+      setSearchErrorKind("error");
+      setResults([]);
+      setHasSearched(false);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSelect(imdbID) {
@@ -73,25 +141,29 @@ export default function App() {
     setStatus("");
   }
 
+  function showStatus(message, isError) {
+    setStatus(message);
+    setStatusIsError(isError);
+  }
+
   async function handleAdd(movie) {
     setAdding(true);
+    setStatus("");
     try {
-      const res = await fetch(`${API}/movies`, {
+      await request("/movies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imdbID: movie.imdbID }),
       });
-
-      if (res.status === 201) {
-        setStatus(`Added "${movie.Title}"`);
-        setSelectedId(null);
-        await loadMovies();
-      } else if (res.status === 409) {
-        setStatus(`"${movie.Title}" is already in your list`);
-      } else if (res.status === 502) {
-        setStatus("Could not get movie details. Please try again.");
+      showStatus(`Added "${movie.Title}"`, false);
+      setSelectedId(null);
+      await loadMovies();
+    } catch (err) {
+      if (err.status === 409) {
+        showStatus(`"${movie.Title}" is already in your list`, false);
+        await loadMovies(); // someone else added it, so refresh to show the badge
       } else {
-        setStatus("Something went wrong");
+        showStatus(err.message, true);
       }
     } finally {
       setAdding(false);
@@ -100,12 +172,21 @@ export default function App() {
 
   async function handleRemove(movie) {
     setRemovingId(movie._id);
+    setCardError(null);
     try {
-      await fetch(`${API}/movies/${movie._id}`, { method: "DELETE" });
+      await request(`/movies/${movie._id}`, { method: "DELETE" });
       await loadMovies();
+      setConfirmingId(null);
+    } catch (err) {
+      if (err.status === 404) {
+        // Already gone, so the goal is met either way
+        await loadMovies();
+        setConfirmingId(null);
+      } else {
+        setCardError({ id: movie._id, message: err.message });
+      }
     } finally {
       setRemovingId(null);
-      setConfirmingId(null);
     }
   }
 
@@ -113,18 +194,22 @@ export default function App() {
     setEditingId(movie._id);
     setEditRating(movie.rating == null ? "" : String(movie.rating));
     setEditNote(movie.note || "");
+    setEditError("");
+    setCardError(null);
   }
 
   function handleEditCancel() {
     setEditingId(null);
+    setEditError("");
   }
 
   async function handleEditSave(e) {
-    e.preventDefault(); // stop the browser from reloading the page
-    if (saving) return; // ignore a second submit while one is in flight
+    e.preventDefault();
+    if (saving) return;
     setSaving(true);
+    setEditError("");
     try {
-      const res = await fetch(`${API}/movies/${editingId}`, {
+      await request(`/movies/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,17 +217,15 @@ export default function App() {
           note: editNote.trim(),
         }),
       });
-
-      if (res.ok) {
-        setEditingId(null);
-        await loadMovies();
-      }
+      setEditingId(null);
+      await loadMovies();
+    } catch (err) {
+      setEditError(err.message); // keep the form open so the draft isn't lost
     } finally {
       setSaving(false);
     }
   }
 
-  // Derived state: the imdbID of every movie already saved
   const savedIds = new Set(movies.map((m) => m.imdbID));
 
   return (
@@ -152,7 +235,14 @@ export default function App() {
         <div className="search-row">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            //onChange={(e) => setQuery(e.target.value)}
+
+            //if error message is present, clear it when user enters text into search box.
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (searchError) setSearchError("");
+            }}
+
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSearch();
             }}
@@ -172,7 +262,9 @@ export default function App() {
             placeholder="Year"
             aria-label="Release year (optional)"
           />
-          <button onClick={handleSearch}>Search</button>
+          <button onClick={handleSearch} disabled={loading}>
+            {loading ? "Searching..." : "Search"}
+          </button>
         </div>
       </header>
 
@@ -180,8 +272,19 @@ export default function App() {
         <section className="column">
           <h2>My Movies</h2>
 
-          {moviesLoaded && movies.length === 0 && (
-            <p>No movies yet. Search for one and add it!</p>
+          {moviesError && (
+            <div className="message message-error" role="alert">
+              <span>{moviesError}</span>
+              <button type="button" onClick={loadMovies}>
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!moviesError && moviesLoaded && movies.length === 0 && (
+            <div className="message message-info" role="status">
+              <span>No movies yet. Search for one and add it!</span>
+            </div>
           )}
 
           <ul className="results">
@@ -237,6 +340,12 @@ export default function App() {
                             <span className="char-count">
                               {editNote.length}/100
                             </span>
+
+                            {editError && (
+                              <p className="inline-error" role="alert">
+                                {editError}
+                              </p>
+                            )}
 
                             <div className="edit-buttons">
                               <button type="submit" disabled={saving}>
@@ -328,6 +437,12 @@ export default function App() {
                           >
                             View on IMDb
                           </a>
+
+                          {cardError?.id === movie._id && (
+                            <p className="inline-error" role="alert">
+                              {cardError.message}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -350,7 +465,10 @@ export default function App() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setConfirmingId(null)}
+                              onClick={() => {
+                                setConfirmingId(null);
+                                setCardError(null);
+                              }}
                               disabled={removingId === movie._id}
                               autoFocus
                             >
@@ -385,12 +503,35 @@ export default function App() {
         <section className="column">
           <h2>Search Results</h2>
 
-          {status && <p className="status">{status}</p>}
+          {status && (
+            <p
+              className={statusIsError ? "status status-error" : "status"}
+              role="status"
+            >
+              {status}
+            </p>
+          )}
+
+          {searchError && (
+            <div
+              className={`message message-${searchErrorKind === "warning" ? "warning" : "error"}`}
+              role="alert"
+            >
+              <span>{searchError}</span>
+              {query.trim() && (
+                <button type="button" onClick={handleSearch}>
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
 
           {loading && <p>Searching...</p>}
 
-          {!loading && hasSearched && results.length === 0 && (
-            <p>No movies found.</p>
+          {!loading && !searchError && hasSearched && results.length === 0 && (
+            <div className="message message-info" role="status">
+              <span>No movies found. Try a different title or year.</span>
+            </div>
           )}
 
           <ul className="results">
