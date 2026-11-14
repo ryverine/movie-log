@@ -1,69 +1,162 @@
 .app {
   height: 100vh;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 3fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
-.search-bar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 16px;
+/* Title bar */
+.title-bar {
+  padding: 12px 16px;
   background: #1f2937;
   color: white;
 }
 
-.search-bar h1 {
+.title-bar h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
-.search-row {
+/* Tabs */
+.tab-list {
   display: flex;
-  gap: 8px;
-  width: 100%;
-  max-width: 600px;
+  gap: 4px;
+  padding: 0 16px;
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
 }
 
-.search-row input {
-  flex: 1;
-  padding: 10px;
-  font-size: 1rem;
-}
-
-.search-row button {
+.tab {
   padding: 10px 20px;
-  font-size: 1rem;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #9ca3af;
+  font: inherit;
   cursor: pointer;
 }
 
-.columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 0;
+.tab:hover {
+  color: #e5e7eb;
 }
 
-.column {
+.tab[aria-selected="true"] {
+  color: white;
+  border-bottom-color: #3b82f6;
+}
+
+.tab:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.tab-count {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* Panels */
+.tab-panel {
   padding: 16px;
   overflow-y: auto;
   min-height: 0;
 }
 
-.column+.column {
-  border-left: 1px solid #d1d5db;
+.tab-panel:focus {
+  outline: none;
 }
 
-.column h2 {
-  margin-top: 0;
+.panel-inner {
+  max-width: 720px;
+  margin: 0 auto;
 }
 
+/* Search form, now inside the Search tab */
+.search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-row input {
+  flex: 1;
+  min-width: 180px;
+  padding: 10px;
+  font: inherit;
+}
+
+.search-row .year-input {
+  flex: none;
+  width: 90px;
+  min-width: 0;
+}
+
+.search-row button {
+  padding: 10px 20px;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Messages */
+.message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.message-error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.message-warning {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.message-info {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+.message-success {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.message button {
+  padding: 4px 12px;
+  flex-shrink: 0;
+}
+
+.inline-error {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #991b1b;
+}
+
+/*
 .status {
   margin: 0 0 12px;
   font-size: 0.9rem;
 }
 
+.status-error {
+  color: #991b1b;
+}
+*/
+
+/* Cards */
 .results {
   list-style: none;
   padding: 0;
@@ -96,7 +189,6 @@ button:disabled {
   box-shadow: 0 0 0 2px #2563eb;
 }
 
-/* Search result: a real <button> that selects the card */
 .card-select {
   display: flex;
   align-items: center;
@@ -111,17 +203,23 @@ button:disabled {
   text-align: left;
 }
 
-/* Saved movie: plain content. Right padding leaves room for Edit + Remove */
+.card-select:disabled {
+  cursor: default;
+}
+
+.movie-card.saved .card-select {
+  opacity: 0.6;
+}
+
 .card-body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 8px 160px 8px 8px;
 }
 
 .card-body.editing {
-  align-items: flex-start;
-  padding: 8px;
+  padding: 8px 90px 8px 8px;
 }
 
 .card-select img,
@@ -151,12 +249,30 @@ button:disabled {
   flex: 1;
 }
 
-.movie-info strong {
+.movie-info strong,
+.movie-info span {
   display: block;
 }
 
-.movie-info span {
-  display: block;
+.facts {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.movie-info .score {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
 }
 
 .rating {
@@ -172,12 +288,43 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
-/* Upper right corner of the card */
-.add-btn {
+.more-info {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.more-info summary {
+  cursor: pointer;
+  color: #2563eb;
+}
+
+.more-info p {
+  margin: 6px 0 0;
+}
+
+.imdb-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+/* Buttons pinned to a card's upper right */
+.add-btn,
+.close-btn {
   position: absolute;
   top: 8px;
   right: 8px;
   padding: 6px 14px;
+}
+
+.saved-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #166534;
 }
 
 .card-actions {
@@ -192,7 +339,12 @@ button:disabled {
   padding: 6px 14px;
 }
 
-/* The edit form */
+.confirm-text {
+  align-self: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -227,176 +379,22 @@ button:disabled {
   padding: 6px 14px;
 }
 
-.movie-card.saved .card-select {
-  opacity: 0.6;
+/* Narrow screens: cards get crowded by the pinned buttons */
+@media (max-width: 520px) {
+
+  .card-body,
+  .card-select {
+    flex-wrap: wrap;
+    padding-right: 8px;
+    padding-top: 44px;
+  }
+
+  .card-body.editing {
+    padding-right: 8px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+  }
 }
-
-.card-select:disabled {
-  cursor: default;
-}
-
-.saved-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 6px 14px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #166534;
-}
-
-.confirm-text {
-  align-self: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.search-row .year-input {
-  flex: none;
-  width: 90px;
-}
-
-
-.card-body {
-  align-items: flex-start;
-}
-
-.facts {
-  font-size: 0.85rem;
-  color: #4b5563;
-}
-
-.scores {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.movie-info .score {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 0.8rem;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-}
-
-.more-info {
-  margin-top: 6px;
-  font-size: 0.9rem;
-}
-
-.more-info summary {
-  cursor: pointer;
-  color: #2563eb;
-}
-
-.more-info p {
-  margin: 6px 0 0;
-}
-
-.imdb-link {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 0.9rem;
-}
-
-.close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 6px 14px;
-}
-
-.card-body.editing {
-  padding-right: 90px;
-  /* leave room for the Close button */
-}
-
-
-
-
-.error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  color: #991b1b;
-  font-size: 0.9rem;
-}
-
-.error-banner button {
-  padding: 4px 12px;
-  flex-shrink: 0;
-}
-
-/*
-.inline-error {
-  margin: 6px 0 0;
-  font-size: 0.85rem;
-  color: #991b1b;
-}
-
-.status-error {
-  color: #991b1b;
-}
-*/
-
-/* Shared shape for every message box */
-.message {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  border: 1px solid;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-/* System error: something broke */
-.message-error {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #991b1b;
-}
-
-/* Validation: the user needs to do something */
-.message-warning {
-  background: #fffbeb;
-  border-color: #fcd34d;
-  color: #92400e;
-}
-
-/* Empty state: nothing went wrong, there's just nothing here */
-.message-info {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  color: #4b5563;
-}
-
-.message button {
-  padding: 4px 12px;
-  flex-shrink: 0;
-}
-
-.inline-error {
-  margin: 6px 0 0;
-  font-size: 0.85rem;
-  color: #991b1b;
-}
-
-.status-error {
-  color: #991b1b;
-}
-
-
-
-/*END*/
