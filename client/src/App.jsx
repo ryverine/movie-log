@@ -68,7 +68,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [status, setStatus] = useState("");
-  const [statusIsError, setStatusIsError] = useState(false);
+  //const [statusIsError, setStatusIsError] = useState(false);
+  const [statusKind, setStatusKind] = useState("success"); // "success" | "warning" | "error"
   const [searchError, setSearchError] = useState("");
   const [searchErrorKind, setSearchErrorKind] = useState("error"); // "error" or "warning"
 
@@ -141,9 +142,14 @@ export default function App() {
     setStatus("");
   }
 
-  function showStatus(message, isError) {
+  /*function showStatus(message, isError) {
     setStatus(message);
     setStatusIsError(isError);
+  }*/
+
+  function showStatus(message, kind) {
+    setStatus(message);
+    setStatusKind(kind);
   }
 
   async function handleAdd(movie) {
@@ -155,15 +161,15 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imdbID: movie.imdbID }),
       });
-      showStatus(`Added "${movie.Title}"`, false);
+      showStatus(`Added "${movie.Title}"`, "success");
       setSelectedId(null);
       await loadMovies();
     } catch (err) {
       if (err.status === 409) {
-        showStatus(`"${movie.Title}" is already in your list`, false);
+        showStatus(`"${movie.Title}" is already in your list`, "warning");
         await loadMovies(); // someone else added it, so refresh to show the badge
       } else {
-        showStatus(err.message, true);
+        showStatus(err.message, "error");
       }
     } finally {
       setAdding(false);
@@ -557,8 +563,8 @@ export default function App() {
 
               {status && (
                 <div
-                  className={`message message-${statusIsError ? "error" : "success"}`}
-                  role="status"
+                  className={`message message-${statusKind}`}
+                  role={statusKind === "error" ? "alert" : "status"}
                 >
                   <span>{status}</span>
                 </div>
