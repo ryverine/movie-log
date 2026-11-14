@@ -556,12 +556,12 @@ export default function App() {
               </div>
 
               {status && (
-                <p
-                  className={statusIsError ? "status status-error" : "status"}
+                <div
+                  className={`message message-${statusIsError ? "error" : "success"}`}
                   role="status"
                 >
-                  {status}
-                </p>
+                  <span>{status}</span>
+                </div>
               )}
 
               {searchError && (
