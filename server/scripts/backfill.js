@@ -1,5 +1,6 @@
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+//const path = require("path");
+//require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const config = require("../config");
 
 const mongoose = require("mongoose");
 const Movie = require("../models/Movie");
@@ -24,7 +25,8 @@ const DETAIL_FIELDS = [
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
-    await mongoose.connect(MONGO_URI);
+    //await mongoose.connect(MONGO_URI);
+    await mongoose.connect(config.mongoUri);
 
     try {
         // Old documents lack these fields entirely. New ones always have them, even as "".

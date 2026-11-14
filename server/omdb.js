@@ -1,5 +1,8 @@
 // Everything about talking to OMDb for one movie's details lives here.
 
+const config = require("./config");
+
+
 // Convert OMDb's "N/A" placeholder into an empty string
 const clean = (value) => (value && value !== "N/A" ? value : "");
 
@@ -14,7 +17,7 @@ const NOT_FOUND_MESSAGES = new Set([
 // Look up one movie on OMDb and return it in the shape our database uses
 async function fetchMovieDetails(imdbID) {
     const url =
-        `https://www.omdbapi.com/?apikey=${process.env.OMDB_API_KEY}` +
+        `https://www.omdbapi.com/?apikey=${config.omdbApiKey}` +
         `&i=${encodeURIComponent(imdbID)}&plot=short`;
 
     let data;
