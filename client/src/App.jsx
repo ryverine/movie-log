@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
-const API = "http://localhost:5000/api";
+//const API = "http://localhost:5000/api";
+const API = import.meta.env.VITE_API_URL;
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+
+
 
 // An error that carries the HTTP status, so callers can react to specific cases
 class ApiError extends Error {
@@ -83,6 +87,9 @@ export default function App() {
   const [confirmingId, setConfirmingId] = useState(null);
   const [cardError, setCardError] = useState(null); // { id, message }
 
+  // Render’s free tier sleeps, so your first visitor may wait up to a minute with no explanation. A silent wait looks broken
+  const [isSlow, setIsSlow] = useState(false);
+
   // Editing
   const [editingId, setEditingId] = useState(null);
   const [editRating, setEditRating] = useState("");
@@ -90,14 +97,30 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
+
+
+
+  // Starts a timer that shows a notice if a request is taking unusually long.
+  // Returns a function that cancels it.
+  function startSlowNotice() {
+    const timer = setTimeout(() => setIsSlow(true), 3000);
+    return () => {
+      clearTimeout(timer);
+      setIsSlow(false);
+    };
+  }
+
+
   async function loadMovies() {
     setMoviesError("");
+    const stopNotice = startSlowNotice();
     try {
       const data = await request("/movies");
       setMovies(Array.isArray(data) ? data : []);
     } catch (err) {
       setMoviesError(err.message);
     } finally {
+      stopNotice();
       setMoviesLoaded(true);
     }
   }
@@ -121,6 +144,7 @@ export default function App() {
     setSelectedId(null);
     setStatus("");
     setSearchError("");
+    const stopNotice = startSlowNotice();
     try {
       const params = new URLSearchParams({ title: query.trim() });
       if (year) params.set("year", year);
@@ -133,6 +157,7 @@ export default function App() {
       setResults([]);
       setHasSearched(false);
     } finally {
+      stopNotice();
       setLoading(false);
     }
   }
@@ -289,6 +314,12 @@ export default function App() {
           >
 
             <div className="panel-inner">
+
+              {isSlow && (
+                <div className="message message-info" role="status">
+                  <span>Waking up the server. This can take up to a minute on the free tier.</span>
+                </div>
+              )}
 
               {moviesError && (
                 <div className="message message-error" role="alert">
@@ -530,6 +561,13 @@ export default function App() {
           >
 
             <div className="panel-inner">
+
+              {isSlow && (
+                <div className="message message-info" role="status">
+                  <span>Waking up the server. This can take up to a minute on the free tier.</span>
+                </div>
+              )}
+
               <div className="search-row">
                 <input
                   value={query}
