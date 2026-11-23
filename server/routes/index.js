@@ -12,6 +12,8 @@ router.delete("/movies/:id", movies.removeMovie);
 
 router.post("/auth/register", auth.register);
 
+router.post("/auth/login", auth.login);
+
 // Any unmatched /api route answers with JSON, not Express's HTML error page
 router.use((req, res) => {
     res.status(404).json({ error: `No route for ${req.method} ${req.originalUrl}` });
