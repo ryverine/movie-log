@@ -74,3 +74,9 @@ exports.login = async (req, res, next) => {
         next(err);
     }
 };
+
+
+// GET /api/auth/me
+exports.me = (req, res) => {
+    res.json({ user: req.user });
+};
