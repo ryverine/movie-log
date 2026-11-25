@@ -2,7 +2,15 @@ const mongoose = require("mongoose");
 
 const movieSchema = new mongoose.Schema(
     {
-        imdbID: { type: String, required: true, unique: true },
+
+        owner: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true,
+        },
+        imdbID: { type: String, required: true },
+        //imdbID: { type: String, required: true, unique: true },
         title: { type: String, required: true },
         year: { type: String, required: true },
         poster: { type: String, default: "" },
@@ -24,5 +32,8 @@ const movieSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
+
+// Unique per user, not globally: two people can both save the same movie
+movieSchema.index({ owner: 1, imdbID: 1 }, { unique: true });
 
 module.exports = mongoose.model("Movie", movieSchema);

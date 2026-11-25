@@ -4,7 +4,7 @@ const { fetchMovieDetails } = require("../omdb");
 // GET /api/movies
 exports.listMovies = async (req, res, next) => {
     try {
-        const movies = await Movie.find().sort({ createdAt: -1 });
+        const movies = await Movie.find({ owner: req.user.id }).sort({ createdAt: -1 });
         res.json(movies);
     } catch (err) {
         next(err);
@@ -20,13 +20,12 @@ exports.addMovie = async (req, res, next) => {
     }
 
     try {
-        // Skip the OMDb call entirely if we already have this movie
-        if (await Movie.exists({ imdbID })) {
+        if (await Movie.exists({ owner: req.user.id, imdbID })) {
             return res.status(409).json({ error: "Movie already saved" });
         }
 
         const details = await fetchMovieDetails(imdbID);
-        const movie = await Movie.create(details);
+        const movie = await Movie.create({ ...details, owner: req.user.id });
         res.status(201).json(movie);
     } catch (err) {
         if (err.code === 11000) {
@@ -36,9 +35,7 @@ exports.addMovie = async (req, res, next) => {
             return res.status(404).json({ error: "Movie not found on OMDb" });
         }
         if (err.upstream) {
-            return res
-                .status(502)
-                .json({ error: "Could not get movie details from OMDb" });
+            return res.status(502).json({ error: "Could not get movie details from OMDb" });
         }
         if (err.name === "ValidationError") {
             return res.status(400).json({ error: err.message });
@@ -51,8 +48,9 @@ exports.addMovie = async (req, res, next) => {
 exports.updateMovie = async (req, res, next) => {
     try {
         const { rating, note } = req.body;
-        const movie = await Movie.findByIdAndUpdate(
-            req.params.id,
+        // The owner is part of the filter, so one user cannot edit another's movie
+        const movie = await Movie.findOneAndUpdate(
+            { _id: req.params.id, owner: req.user.id },
             { rating, note },
             { new: true, runValidators: true }
         );
@@ -71,7 +69,10 @@ exports.updateMovie = async (req, res, next) => {
 // DELETE /api/movies/:id
 exports.removeMovie = async (req, res, next) => {
     try {
-        const movie = await Movie.findByIdAndDelete(req.params.id);
+        const movie = await Movie.findOneAndDelete({
+            _id: req.params.id,
+            owner: req.user.id,
+        });
         if (!movie) {
             return res.status(404).json({ error: "Movie not found" });
         }
