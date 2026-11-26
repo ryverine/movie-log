@@ -1,54 +1,9 @@
 import { useState, useEffect } from "react";
 import "./App.css";
+import AuthForm from "./AuthForm";
+import { request, getToken, clearToken, setUnauthorizedHandler } from "./api";
 
-//const API = "http://localhost:5000/api";
-const API = import.meta.env.VITE_API_URL;
 const RATINGS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-
-
-
-// An error that carries the HTTP status, so callers can react to specific cases
-class ApiError extends Error {
-  constructor(message, status) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
-
-// Every request to our API goes through here, so error handling lives in one place
-async function request(path, options) {
-  let res;
-  try {
-    res = await fetch(`${API}${path}`, options);
-  } catch {
-    // fetch only rejects when the request never got an answer
-    throw new ApiError("Can't reach the server. Is it running?", 0);
-  }
-
-  const text = await res.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = null; // not JSON, so fall back to a status-based message below
-    }
-  }
-
-  if (!res.ok) {
-    const fallback =
-      res.status === 502
-        ? "Movie service is unavailable. Please try again."
-        : res.status >= 500
-          ? "Something went wrong on the server."
-          : `Request failed (${res.status})`;
-    throw new ApiError(data?.error || fallback, res.status);
-  }
-
-  return data;
-}
 
 function Poster({ src, title }) {
   const [failed, setFailed] = useState(false);
@@ -63,6 +18,14 @@ function Poster({ src, title }) {
 }
 
 export default function App() {
+  // Auth
+  const [user, setUser] = useState(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [signedOutMessage, setSignedOutMessage] = useState("");
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState("library");
+
   // Search side
   const [query, setQuery] = useState("");
   const [year, setYear] = useState("");
@@ -72,12 +35,9 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [status, setStatus] = useState("");
-  //const [statusIsError, setStatusIsError] = useState(false);
-  const [statusKind, setStatusKind] = useState("success"); // "success" | "warning" | "error"
+  const [statusKind, setStatusKind] = useState("success");
   const [searchError, setSearchError] = useState("");
-  const [searchErrorKind, setSearchErrorKind] = useState("error"); // "error" or "warning"
-
-  const [activeTab, setActiveTab] = useState("library"); // "library" or "search"
+  const [isSlow, setIsSlow] = useState(false);
 
   // Saved movies side
   const [movies, setMovies] = useState([]);
@@ -85,10 +45,7 @@ export default function App() {
   const [moviesError, setMoviesError] = useState("");
   const [removingId, setRemovingId] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
-  const [cardError, setCardError] = useState(null); // { id, message }
-
-  // Render’s free tier sleeps, so your first visitor may wait up to a minute with no explanation. A silent wait looks broken
-  const [isSlow, setIsSlow] = useState(false);
+  const [cardError, setCardError] = useState(null);
 
   // Editing
   const [editingId, setEditingId] = useState(null);
@@ -97,11 +54,40 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
+  // Any expired token anywhere in the app lands here
+  useEffect(() => {
+    setUnauthorizedHandler((message) => {
+      setUser(null);
+      setSignedOutMessage(message);
+    });
+  }, []);
 
+  // On startup, check whether the stored token is still valid
+  useEffect(() => {
+    async function checkSession() {
+      if (!getToken()) {
+        setCheckingAuth(false);
+        return;
+      }
+      try {
+        const data = await request("/auth/me");
+        setUser(data.user);
+      } catch {
+        clearToken();
+      } finally {
+        setCheckingAuth(false);
+      }
+    }
+    checkSession();
+  }, []);
 
+  // Load the library whenever someone signs in
+  useEffect(() => {
+    if (!user) return;
+    loadMovies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
-  // Starts a timer that shows a notice if a request is taking unusually long.
-  // Returns a function that cancels it.
   function startSlowNotice() {
     const timer = setTimeout(() => setIsSlow(true), 3000);
     return () => {
@@ -110,6 +96,26 @@ export default function App() {
     };
   }
 
+  function handleSignOut() {
+    clearToken();
+    setUser(null);
+    setSignedOutMessage("");
+    // Clear anything belonging to the previous session
+    setMovies([]);
+    setMoviesLoaded(false);
+    setResults([]);
+    setHasSearched(false);
+    setQuery("");
+    setYear("");
+    setStatus("");
+    setEditingId(null);
+    setActiveTab("library");
+  }
+
+  function handleSignedIn(newUser) {
+    setSignedOutMessage("");
+    setUser(newUser);
+  }
 
   async function loadMovies() {
     setMoviesError("");
@@ -118,28 +124,20 @@ export default function App() {
       const data = await request("/movies");
       setMovies(Array.isArray(data) ? data : []);
     } catch (err) {
-      setMoviesError(err.message);
+      if (err.status !== 401) setMoviesError(err.message);
     } finally {
       stopNotice();
       setMoviesLoaded(true);
     }
   }
 
-  useEffect(() => {
-    loadMovies();
-  }, []);
-
   async function handleSearch() {
-
-    // Catch if search box is blank
     if (!query.trim()) {
       setSearchError("Enter a movie title to search.");
-      setSearchErrorKind("warning");
       setResults([]);
       setHasSearched(false);
       return;
     }
-
     setLoading(true);
     setSelectedId(null);
     setStatus("");
@@ -152,8 +150,7 @@ export default function App() {
       setResults(Array.isArray(data) ? data : []);
       setHasSearched(true);
     } catch (err) {
-      setSearchError(err.message);
-      setSearchErrorKind("error");
+      if (err.status !== 401) setSearchError(err.message);
       setResults([]);
       setHasSearched(false);
     } finally {
@@ -166,11 +163,6 @@ export default function App() {
     setSelectedId(imdbID === selectedId ? null : imdbID);
     setStatus("");
   }
-
-  /*function showStatus(message, isError) {
-    setStatus(message);
-    setStatusIsError(isError);
-  }*/
 
   function showStatus(message, kind) {
     setStatus(message);
@@ -192,8 +184,8 @@ export default function App() {
     } catch (err) {
       if (err.status === 409) {
         showStatus(`"${movie.Title}" is already in your list`, "warning");
-        await loadMovies(); // someone else added it, so refresh to show the badge
-      } else {
+        await loadMovies();
+      } else if (err.status !== 401) {
         showStatus(err.message, "error");
       }
     } finally {
@@ -210,10 +202,9 @@ export default function App() {
       setConfirmingId(null);
     } catch (err) {
       if (err.status === 404) {
-        // Already gone, so the goal is met either way
         await loadMovies();
         setConfirmingId(null);
-      } else {
+      } else if (err.status !== 401) {
         setCardError({ id: movie._id, message: err.message });
       }
     } finally {
@@ -251,13 +242,12 @@ export default function App() {
       setEditingId(null);
       await loadMovies();
     } catch (err) {
-      setEditError(err.message); // keep the form open so the draft isn't lost
+      if (err.status !== 401) setEditError(err.message);
     } finally {
       setSaving(false);
     }
   }
 
-  // Left and right arrows move between tabs, which is the expected behavior
   function handleTabKeyDown(e) {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     const next = activeTab === "library" ? "search" : "library";
@@ -267,11 +257,38 @@ export default function App() {
 
   const savedIds = new Set(movies.map((m) => m.imdbID));
 
+  // Don't flash the login screen while the stored token is being checked
+  if (checkingAuth) {
+    return (
+      <div className="auth-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        {signedOutMessage && (
+          <div className="signed-out-banner" role="alert">
+            {signedOutMessage}
+          </div>
+        )}
+        <AuthForm onSignedIn={handleSignedIn} />
+      </>
+    );
+  }
+
   return (
     <div className="app">
-
       <header className="title-bar">
         <h1>Movie Log</h1>
+        <div className="user-area">
+          <span className="username">{user.username}</span>
+          <button type="button" className="link-button" onClick={handleSignOut}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="tab-list" role="tablist" aria-label="Views">
@@ -312,9 +329,7 @@ export default function App() {
             aria-labelledby="tab-library"
             tabIndex={-1}
           >
-
             <div className="panel-inner">
-
               {isSlow && (
                 <div className="message message-info" role="status">
                   <span>Waking up the server. This can take up to a minute on the free tier.</span>
@@ -559,15 +574,7 @@ export default function App() {
             aria-labelledby="tab-search"
             tabIndex={-1}
           >
-
             <div className="panel-inner">
-
-              {isSlow && (
-                <div className="message message-info" role="status">
-                  <span>Waking up the server. This can take up to a minute on the free tier.</span>
-                </div>
-              )}
-
               <div className="search-row">
                 <input
                   value={query}
@@ -599,6 +606,12 @@ export default function App() {
                 </button>
               </div>
 
+              {isSlow && (
+                <div className="message message-info" role="status">
+                  <span>Waking up the server. This can take up to a minute on the free tier.</span>
+                </div>
+              )}
+
               {status && (
                 <div
                   className={`message message-${statusKind}`}
@@ -609,10 +622,7 @@ export default function App() {
               )}
 
               {searchError && (
-                <div
-                  className={`message message-${searchErrorKind === "warning" ? "warning" : "error"}`}
-                  role="alert"
-                >
+                <div className="message message-error" role="alert">
                   <span>{searchError}</span>
                   {query.trim() && (
                     <button type="button" onClick={handleSearch}>
@@ -678,9 +688,6 @@ export default function App() {
           </section>
         )}
       </main>
-
-
-
     </div>
   );
 }
